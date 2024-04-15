@@ -167,7 +167,7 @@ race_ref_line <- data.frame(
   )
 
 ggplot(data = re, aes(x = race_ethnicity, y = percentage)) +
-  geom_bar(stat = "identity", width = 0.65) +
+  geom_bar(stat = "identity", width = 0.65, fill = "#C0C0C0") +
   theme_apollo(direction = "vertical") +
   scale_x_discrete(labels = wrap_labels(width = 15)) +
   scale_y_continuous(expand = c(0,0), limits = c(0,70)) +
