@@ -1,0 +1,246 @@
+---
+title: "CCLHDME 2024 - ggplot2 Examples"
+---
+
+```{r}
+#| label: setup
+#| warning: false
+#| message: false
+#| echo: false
+library(dplyr)
+library(OCepi)
+library(smcepi)
+library(ggplot2)
+
+rates_age <- read.csv(here::here("data","rates_age.csv"), na.strings = "", stringsAsFactors = FALSE) %>%
+  mutate(SpCollDt = as.Date(SpCollDt)) %>%
+  filter(SpCollDt <= "2022-01-09", SpCollDt >= "2021-12-01")
+
+HairEyeColor <- HairEyeColor %>% data.frame()
+
+iris <- iris %>% data.frame()
+```
+
+The examples below aim to incorporate several best practices discussed in the presentation "Data Visualization Workshop" from the California Conference of Local Health Data Managers and Epidemiologists 2024 Conference. Libraries used to create plots: ggplot2, dplyr, OCepi, and smcepi.
+
+To install the LHJ packages:
+
+```{r}
+#| label: package-install
+#| eval: false
+devtools::install_github("ericmshearer/OCepi")
+devtools::install_github("San-Mateo-County-Health-Epidemiology/smcepi")
+```
+
+## Embedding Labels in Line Plot
+
+```{r}
+#| label: line-labels
+#| warning: false
+#| fig-width: 11
+#| fig-height: 8
+#| out-width: "100%"
+set.seed(1234)
+months = seq.Date(from = as.Date("2023-01-01"), to = as.Date("2023-12-01"), by = "month")
+
+ts <- data.frame(
+  site = c(rep("A", 12), rep("B", 12)),
+  date = c(rep(months, 2)),
+  scores = c(sample(65:99, 12, replace = TRUE), sample(65:99, 12, replace = TRUE))
+)
+
+ggplot(data = ts, aes(x = date, y = scores, group = site, linetype = site)) +
+  geom_line(aes(colour=site), linewidth = 1) +
+  scale_x_date(breaks = ts$date, date_labels = "%b\n%Y") +
+  scale_y_continuous(expand = c(0,0), limits = c(0,100)) +
+  theme_apollo(legend = "Hide") +
+  scale_colour_manual(values = c(A="#00577D",B="#E0001B")) +
+  scale_linetype_discrete() +
+  apollo_label(data = end_points(ts, date), aes(label = site), hjust = 0) +
+  labs(
+    title = "Embed Labels & Texture Line Types",
+    subtitle = "CCLHDME Conference 2024\n",
+    x = "Date",
+    y = "Percentage (%)"
+  )
+```
+
+## Highlighting to Draw Focus
+
+### Bar Plot
+
+```{r}
+#| label: highlight-bar
+#| warning: false
+#| fig-width: 11
+#| fig-height: 8
+#| out-width: "100%"
+df <- data.frame(
+  locations = letters[1:6],
+  scores = c(89,62,74,88,89.5,82)
+  )
+
+title <- smcepi::gg_color_title("Highlighting to Draw Focus - Bar Plot", c("Highlighting"), c("#9E0059"))
+
+ggplot(data = df, aes(x = locations, y = scores)) +
+  geom_col() +
+  highlight_geom(scores==max(scores), pal = "#9E0059") +
+  scale_y_continuous(expand = c(0,0), limits = c(0,100)) +
+  theme_apollo(direction = "vertical") +
+  labs(
+    title = title,
+    subtitle = "CCLHDME Conference 2024\n",
+    caption = "Data source: Top Secret",
+    x = "Locations",
+    y = "Scores"
+  ) +
+  apollo_label(aes(label = scores), vjust = -0.3) +
+  theme(plot.title = ggtext::element_markdown())
+```
+
+### Line Plot
+
+```{r}
+#| label: highlight-line
+#| warning: false
+#| fig-width: 11
+#| fig-height: 10
+#| out-width: "100%"
+nudge = case_when(
+  unique(rates_age$AgeGroup) == "85+"~ -3.5,
+  unique(rates_age$AgeGroup) == "75-84"~ 1,
+  unique(rates_age$AgeGroup) == "0-4"~ 2,
+  TRUE ~ 0)
+
+title <- smcepi::gg_color_title("Highlighting to Draw Focus - Line Plot", c("Highlighting"), c("#9E0059"))
+
+rates_age %>%
+  ggplot(aes(x = SpCollDt, y = Rate, group = AgeGroup)) +
+  geom_line(linewidth = 1.4) + 
+  labs(title = title,
+       subtitle = "CCLHDME Conference 2024\n",
+       x = "Specimen Collection Date",
+       y = "Rate per 100,000",
+       caption = "*Data Source: Super Top Secret.") +
+  scale_x_date() +
+  scale_y_continuous(expand = c(0,0), limits = c(0,475)) +
+  theme_apollo(direction = "vertical") +
+  highlight_geom(AgeGroup=="18-24", pal = "#9E0059", linewidth = 2) +
+  apollo_label(data = end_points(rates_age, SpCollDt), aes(x = SpCollDt, y = Rate, label = AgeGroup),
+               nudge_y = nudge, hjust = 0, nudge_x = 0.05) +
+  theme(plot.title = ggtext::element_markdown())
+```
+
+## Adding Population Reference Lines
+
+```{r}
+#| label: ref-pop 
+#| #| warning: false
+#| fig-width: 14
+#| fig-height: 11
+#| out-width: "100%"
+re <- data.frame(
+  race_ethnicity = c("American Indian/Alaska Native",
+                     "Asian","Black/African American",
+                     "Hispanic/Latinx",
+                     "Multiple Races",
+                     "Native Hawaiian/Other Pacific Islander",
+                     "Other",
+                     "Unknown",
+                     "White"),
+  n = c(1,29,8,178,2,4,6,6,80),
+  percentage = c(0.3,9.2,2.5,56.7,0.6,1.3,1.9,1.9,25.5)
+)
+
+re$label <- n_percent(re$n, re$percentage, reverse = TRUE)
+
+race_ref_line <- data.frame(
+  race_ethnicity = c("American Indian/Alaska Native",
+                     "Asian",
+                     "Black/African American",
+                     "Hispanic/Latinx",
+                     "Multiple Races",
+                     "Native Hawaiian/Other Pacific Islander",
+                     "Other",
+                     "White"),
+  percentage = c(0.2,21.9,1.6,34.1,0.2,0.5,3.9,37.6)
+  )
+
+ggplot(data = re, aes(x = race_ethnicity, y = percentage)) +
+  geom_bar(stat = "identity", width = 0.65) +
+  theme_apollo(direction = "vertical") +
+  scale_x_discrete(labels = wrap_labels(width = 15)) +
+  scale_y_continuous(expand = c(0,0), limits = c(0,70)) +
+  labs(
+    title = "Population Reference Lines",
+    subtitle = "CCLHDME Conference 2024\n",
+    caption = "Data source: Top Secret\n*Colored lines represent Fake County population.",
+    x = "Race/Ethnicity",
+    y = "Percentage (%)"
+  ) +
+  apollo_label(aes(label = label), vjust = -0.3) +
+  geom_errorbar(data = race_ref_line, aes(x = race_ethnicity, ymin = percentage, ymax = percentage), color = "#9E0059", linewidth = 1.5)
+```
+
+## Colored Title with Highlighting
+
+```{r}
+#| label: title-highlight
+#| warning: false
+#| fig-width: 11
+#| fig-height: 8
+#| out-width: "100%"
+brown_color <- "#873600"
+blue_color <- "#006cb6"
+
+title <- smcepi::gg_color_title("Brown and blue eyes are most common",
+                                c("Brown", "blue"), c(brown_color, blue_color))
+HairEyeColor %>%
+  group_by(Eye) %>%
+  summarize(freq = sum(Freq),
+            .groups = "keep") %>%
+  ungroup() %>%
+  ggplot(aes(x = Eye, y = freq, fill = Eye)) +
+  scale_fill_manual(values = c("Brown" = brown_color,
+                               "Blue" = blue_color,
+                               "Hazel" = "#D5D8DC",
+                               "Green" = "#D5D8DC")) + 
+  geom_bar(stat = "identity") +
+  scale_y_continuous(expand = c(0,0), limits = c(0,240)) +
+  labs(
+    title = title,
+    subtitle = "CCLHDME Conference 2024\n",
+    x = "Eye Color",
+    y = "Frequency"
+    ) +
+  theme_apollo(legend = "Hide") +
+  theme(plot.title = ggtext::element_markdown()) +
+  apollo_label(aes(label = freq), vjust = -0.3)
+```
+
+## Beeswarm/Jitter Plot
+
+```{r}
+#| label: beeswarm
+#| warning: false
+#| fig-width: 11
+#| fig-height: 8
+#| out-width: "100%"
+ggplot(data = iris, aes(x = Species, y = Sepal.Length)) +
+  geom_point(
+    position = position_jitter(w = 1/6, h = 0),
+    size = 4, 
+    color = "#006cb6", 
+    alpha = 2/3
+  ) +
+  scale_y_continuous(
+    limits = c(0,8),
+    breaks = seq(0,8, by = 2),
+    expand = c(0,0)
+  ) +
+  theme_apollo() +
+  labs(
+    title = "Beeswarm/Jitter Plot",
+    subtitle = "CCLHDME Conference 2024\n"
+    )
+```

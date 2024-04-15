@@ -1,0 +1,23 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "CCLHDME 2024 - ggplot2 Examples"
+
+format:
+    html:
+      toc-title: "Examples"
+      toc: true
+      toc-depth: 2
+      number-sections: false
+      highlight-style: github
+      toc-location: body
+      cap-location: top
+      page-layout: full
+      embed-resources: true
+      self-contained-math: true
+      toc-expand: true
+
+editor: visual
+
